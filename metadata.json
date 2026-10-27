@@ -1,0 +1,6 @@
+{
+  "name": "UniTrade 校園二手市集",
+  "description": "全國大學生二手物品交換與買賣平台，專為大專院校打造的二手書、生活雜物與電子產品買賣與交換平台",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
