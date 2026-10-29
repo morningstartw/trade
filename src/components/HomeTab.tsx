@@ -23,7 +23,8 @@ import {
   Gift,
   Repeat,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -241,12 +242,21 @@ export const HomeTab: React.FC = () => {
       {/* Latest Listings & Quick Type Filter */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-emerald-600" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <TrendingUp className="w-5 h-5 text-emerald-600 shrink-0" />
             <h2 className="text-base font-bold text-gray-900">
               {selectedSchoolFilter === 'all' ? '最新全台校園上架' : `${selectedSchoolFilter} 最新刊登`}
             </h2>
             <span className="text-xs text-gray-600">({schoolFilteredProducts.length} 件商品)</span>
+            {selectedSchoolFilter !== 'all' && (
+              <button
+                onClick={() => setSelectedSchoolFilter('all')}
+                className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-lg font-semibold flex items-center gap-1 transition cursor-pointer"
+              >
+                <span>清除學校篩選</span>
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
 
           {/* Quick Pill Filter for Sale, Exchange, Free */}

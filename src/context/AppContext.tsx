@@ -134,12 +134,12 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  PRODUCTS: 'unitrade_products_v1',
-  FAVORITES: 'unitrade_favorites_v1',
-  NOTIFICATIONS: 'unitrade_notifications_v1',
-  CONVERSATIONS: 'unitrade_conversations_v1',
-  USER_ID: 'unitrade_active_user_v1',
-  REPORTS: 'unitrade_reports_v1',
+  PRODUCTS: 'unitrade_products_v4',
+  FAVORITES: 'unitrade_favorites_v4',
+  NOTIFICATIONS: 'unitrade_notifications_v4',
+  CONVERSATIONS: 'unitrade_conversations_v4',
+  USER_ID: 'unitrade_active_user_v4',
+  REPORTS: 'unitrade_reports_v4',
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

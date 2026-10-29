@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { ProductCard } from './ProductCard';
 import { CATEGORIES, UNIVERSITIES, CONDITIONS, REGIONS } from '../data/mockData';
@@ -17,10 +17,35 @@ import {
   Filter, 
   Sparkles,
   MapPin,
-  Check
+  Check,
+  LayoutGrid,
+  BookOpen,
+  Laptop,
+  Coffee,
+  Armchair,
+  Shirt,
+  PenTool,
+  Bike,
+  ChevronLeft,
+  ChevronRight,
+  Building2
 } from 'lucide-react';
 
 type SortOption = 'latest' | 'price_asc' | 'price_desc' | 'popular';
+
+const CATEGORY_METADATA: Record<
+  ItemCategory,
+  { label: string; enLabel: string; icon: React.ComponentType<{ className?: string }> }
+> = {
+  textbook: { label: '課本教材', enLabel: 'Textbooks', icon: BookOpen },
+  electronics: { label: '電子3C', enLabel: 'Electronics', icon: Laptop },
+  living: { label: '生活寢具', enLabel: 'Dorm Supplies', icon: Coffee },
+  furniture: { label: '宿舍家具', enLabel: 'Furniture', icon: Armchair },
+  clothing: { label: '穿搭衣物', enLabel: 'Clothing', icon: Shirt },
+  stationery: { label: '文具工具', enLabel: 'Stationery', icon: PenTool },
+  sports: { label: '運動休閒', enLabel: 'Sports', icon: Bike },
+  beauty: { label: '美妝護理', enLabel: 'Personal Care', icon: Sparkles },
+};
 
 export const ExploreTab: React.FC = () => {
   const {
@@ -36,6 +61,9 @@ export const ExploreTab: React.FC = () => {
     selectedSchoolFilter,
     setSelectedSchoolFilter,
     currentUser,
+    isLoggedIn,
+    setAuthModalOpen,
+    setAuthModalTab,
   } = useApp();
 
   const [sortBy, setSortBy] = useState<SortOption>('latest');
@@ -44,6 +72,46 @@ export const ExploreTab: React.FC = () => {
   const [selectedCondition, setSelectedCondition] = useState<ItemCondition | 'all'>('all');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [priceError, setPriceError] = useState<string | null>(null);
+
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (categoryScrollRef.current) {
+      const scrollAmount = 280;
+      categoryScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const getRegionProductCount = (regionId: UniversityRegion) => {
+    if (regionId === 'all') return products.length;
+    return products.filter((p) => {
+      const uni = UNIVERSITIES.find((u) => u.name === p.sellerSchool);
+      return uni && uni.region === regionId;
+    }).length;
+  };
+
+  const handleSelectSchool = (schoolName: string) => {
+    setSelectedSchoolFilter(schoolName);
+    if (schoolName !== 'all') {
+      const matchUni = UNIVERSITIES.find((u) => u.name === schoolName);
+      if (matchUni) {
+        setSelectedRegionFilter(matchUni.region);
+      }
+    }
+  };
+
+  const handleSelectRegion = (regionId: UniversityRegion) => {
+    setSelectedRegionFilter(regionId);
+    if (selectedSchoolFilter !== 'all') {
+      const matchUni = UNIVERSITIES.find((u) => u.name === selectedSchoolFilter);
+      if (matchUni && regionId !== 'all' && matchUni.region !== regionId) {
+        setSelectedSchoolFilter('all');
+      }
+    }
+  };
 
   // Filter logic
   const filteredProducts = useMemo(() => {
@@ -67,14 +135,14 @@ export const ExploreTab: React.FC = () => {
         return false;
       }
 
-      // 4. University School & Region Filter
-      if (selectedSchoolFilter !== 'all' && p.sellerSchool !== selectedSchoolFilter) {
-        return false;
-      }
-
-      if (selectedRegionFilter !== 'all') {
+      // 4. University School & Region Filter (fixed: prioritize explicit school selection, otherwise match region)
+      if (selectedSchoolFilter !== 'all') {
+        if (p.sellerSchool !== selectedSchoolFilter) {
+          return false;
+        }
+      } else if (selectedRegionFilter !== 'all') {
         const uni = UNIVERSITIES.find((u) => u.name === p.sellerSchool);
-        if (uni && uni.region !== selectedRegionFilter) {
+        if (!uni || uni.region !== selectedRegionFilter) {
           return false;
         }
       }
@@ -164,8 +232,155 @@ export const ExploreTab: React.FC = () => {
   });
 
   return (
-    <div className="space-y-5 pb-24">
-      {/* Search Bar & Quick Toggles */}
+    <div className="space-y-4 pb-24">
+      {/* 1. Top Horizontal Scrolling Category Filter Bar */}
+      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-gray-100 shadow-xs relative">
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <span className="p-1 rounded-md bg-emerald-100 text-emerald-700">
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </span>
+              <span>分類專區探索</span>
+            </span>
+            <span className="text-[11px] text-gray-600 hidden sm:inline">
+              快速切換教材、3C、生活寢具等專區
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {categoryFilter !== 'all' && (
+              <button
+                onClick={() => setCategoryFilter('all')}
+                className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold cursor-pointer mr-1 transition"
+              >
+                重設為全部分類
+              </button>
+            )}
+            {/* Scroll navigation arrows for desktop */}
+            <div className="hidden sm:flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => scrollCategories('left')}
+                aria-label="往左捲動分類"
+                className="p-1 text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition border border-gray-200 cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollCategories('right')}
+                aria-label="往右捲動分類"
+                className="p-1 text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition border border-gray-200 cursor-pointer"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable Category Row */}
+        <div
+          ref={categoryScrollRef}
+          className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth select-none"
+        >
+          {/* All categories pill */}
+          <button
+            onClick={() => setCategoryFilter('all')}
+            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl shrink-0 transition-all cursor-pointer text-left ${
+              categoryFilter === 'all'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-2 ring-emerald-500 font-bold'
+                : 'bg-gray-50 hover:bg-emerald-50/60 text-gray-700 border border-gray-200 hover:border-emerald-300'
+            }`}
+          >
+            <div
+              className={`p-1.5 rounded-lg shrink-0 ${
+                categoryFilter === 'all'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-emerald-100/70 text-emerald-700'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col pr-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold whitespace-nowrap leading-tight">全部商品</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                    categoryFilter === 'all'
+                      ? 'bg-white/25 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  {products.length}
+                </span>
+              </div>
+              <span
+                className={`text-[10px] leading-tight font-medium ${
+                  categoryFilter === 'all' ? 'text-emerald-100' : 'text-gray-600'
+                }`}
+              >
+                All Items
+              </span>
+            </div>
+          </button>
+
+          {/* Individual Category Pills */}
+          {CATEGORIES.map((c) => {
+            const meta = CATEGORY_METADATA[c.id];
+            const IconComponent = meta?.icon || Sparkles;
+            const isSelected = categoryFilter === c.id;
+            const count = products.filter((p) => p.category === c.id).length;
+
+            return (
+              <button
+                key={c.id}
+                onClick={() => setCategoryFilter(c.id)}
+                className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl shrink-0 transition-all cursor-pointer text-left ${
+                  isSelected
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-2 ring-emerald-500 font-bold'
+                    : 'bg-gray-50 hover:bg-emerald-50/60 text-gray-700 border border-gray-200 hover:border-emerald-300'
+                }`}
+              >
+                <div
+                  className={`p-1.5 rounded-lg shrink-0 ${
+                    isSelected
+                      ? 'bg-white/20 text-white'
+                      : 'bg-emerald-100/70 text-emerald-700'
+                  }`}
+                >
+                  <IconComponent className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col pr-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold whitespace-nowrap leading-tight">
+                      {meta?.label || c.label}
+                    </span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                        isSelected
+                          ? 'bg-white/25 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-[10px] leading-tight font-medium ${
+                      isSelected ? 'text-emerald-100' : 'text-gray-600'
+                    }`}
+                  >
+                    {meta?.enLabel || c.id}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2. Search Bar & Campus/Type Quick Toggles */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs space-y-3">
         {/* Search Input */}
         <div className="relative">
@@ -198,14 +413,17 @@ export const ExploreTab: React.FC = () => {
             {/* Same school quick lock */}
             <button
               onClick={() => {
-                setSelectedSchoolFilter(currentUser.school);
-                const matchUni = UNIVERSITIES.find((u) => u.name === currentUser.school);
-                if (matchUni) setSelectedRegionFilter(matchUni.region);
+                if (!isLoggedIn) {
+                  setAuthModalTab('login');
+                  setAuthModalOpen(true);
+                  return;
+                }
+                handleSelectSchool(currentUser.school);
               }}
               className="text-[11px] text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 font-bold px-2 py-0.5 rounded-lg transition cursor-pointer flex items-center gap-1"
             >
               <Sparkles className="w-3 h-3 text-emerald-600" />
-              <span>同校面交：{currentUser.school}</span>
+              <span>{isLoggedIn ? `同校面交：${currentUser.school}` : '登入鎖定同校面交'}</span>
             </button>
           </div>
 
@@ -213,25 +431,25 @@ export const ExploreTab: React.FC = () => {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             {REGIONS.map((reg) => {
               const isSelected = selectedRegionFilter === reg.id;
+              const count = getRegionProductCount(reg.id);
               return (
                 <button
                   key={reg.id}
-                  onClick={() => {
-                    setSelectedRegionFilter(reg.id);
-                    if (selectedSchoolFilter !== 'all') {
-                      const matchUni = UNIVERSITIES.find((u) => u.name === selectedSchoolFilter);
-                      if (matchUni && reg.id !== 'all' && matchUni.region !== reg.id) {
-                        setSelectedSchoolFilter('all');
-                      }
-                    }
-                  }}
-                  className={`text-xs px-3 py-1 rounded-xl font-bold shrink-0 transition cursor-pointer ${
+                  onClick={() => handleSelectRegion(reg.id)}
+                  className={`text-xs px-3 py-1.5 rounded-xl font-bold shrink-0 transition cursor-pointer flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-emerald-700 text-white shadow-xs'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {reg.label}
+                  <span>{reg.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-gray-200/80 text-gray-600'
+                    }`}
+                  >
+                    {count}
+                  </span>
                 </button>
               );
             })}
@@ -251,48 +469,31 @@ export const ExploreTab: React.FC = () => {
             </button>
             {activeRegionSchools.map((uni) => {
               const isSelected = selectedSchoolFilter === uni.name;
+              const count = products.filter((p) => p.sellerSchool === uni.name).length;
               return (
                 <button
                   key={uni.id}
-                  onClick={() => setSelectedSchoolFilter(uni.name)}
-                  className={`px-2.5 py-1 rounded-lg shrink-0 transition cursor-pointer ${
+                  onClick={() => handleSelectSchool(uni.name)}
+                  className={`px-2.5 py-1 rounded-lg shrink-0 transition cursor-pointer flex items-center gap-1 ${
                     isSelected
                       ? 'bg-emerald-600 text-white font-bold shadow-xs'
                       : 'bg-gray-50 text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 border border-gray-200'
                   }`}
                 >
-                  {uni.short} ({uni.city})
+                  <span>{uni.short} ({uni.city})</span>
+                  {count > 0 && (
+                    <span
+                      className={`text-[9px] px-1 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-800'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
-        </div>
-
-        {/* Categories Horizontal Scroll */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none pt-1 border-t border-gray-100">
-          <button
-            onClick={() => setCategoryFilter('all')}
-            className={`text-xs px-3 py-1.5 rounded-full font-medium shrink-0 transition cursor-pointer ${
-              categoryFilter === 'all'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            全部類別
-          </button>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setCategoryFilter(c.id)}
-              className={`text-xs px-3 py-1.5 rounded-full font-medium shrink-0 transition cursor-pointer ${
-                categoryFilter === c.id
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
         </div>
 
         {/* Sub-bar: Type selector + Filter trigger + Sorting */}
@@ -394,22 +595,44 @@ export const ExploreTab: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            {/* School Filter */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            {/* Region Filter */}
             <div className="space-y-1.5">
               <label className="font-semibold text-gray-700 flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                <span>學校篩選 (同校面交優先)</span>
+                <span>地區範圍</span>
+              </label>
+              <select
+                value={selectedRegionFilter}
+                onChange={(e) => handleSelectRegion(e.target.value as UniversityRegion)}
+                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              >
+                {REGIONS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label} ({getRegionProductCount(r.id)} 件)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* School Filter */}
+            <div className="space-y-1.5">
+              <label className="font-semibold text-gray-700 flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>指定大專院校</span>
               </label>
               <select
                 value={selectedSchoolFilter}
-                onChange={(e) => setSelectedSchoolFilter(e.target.value)}
+                onChange={(e) => handleSelectSchool(e.target.value)}
                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               >
-                <option value="all">全台所有大專院校 (不拘)</option>
-                {UNIVERSITIES.filter((u) => u.id !== 'all').map((uni) => (
+                <option value="all">不限特定學校 (全部)</option>
+                {(selectedRegionFilter === 'all'
+                  ? UNIVERSITIES
+                  : UNIVERSITIES.filter((u) => u.region === selectedRegionFilter)
+                ).map((uni) => (
                   <option key={uni.id} value={uni.name}>
-                    {uni.name} ({uni.short})
+                    {uni.name} ({uni.short}) - {products.filter((p) => p.sellerSchool === uni.name).length} 件
                   </option>
                 ))}
               </select>
@@ -480,6 +703,14 @@ export const ExploreTab: React.FC = () => {
             <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
               分類: {CATEGORIES.find((c) => c.id === categoryFilter)?.label}
               <button onClick={() => setCategoryFilter('all')} className="hover:text-rose-600">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {selectedRegionFilter !== 'all' && (
+            <span className="bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+              地區: {REGIONS.find((r) => r.id === selectedRegionFilter)?.label}
+              <button onClick={() => handleSelectRegion('all')} className="hover:text-rose-600">
                 <X className="w-3 h-3" />
               </button>
             </span>

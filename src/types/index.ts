@@ -21,12 +21,12 @@ export type ItemStatus = 'available' | 'reserved' | 'sold';
 
 export type VerificationMethod = 'edu_email' | 'student_id_card' | 'none';
 
-export type UniversityRegion = 'all' | 'north' | 'central' | 'south' | 'east';
+export type UniversityRegion = 'all' | 'north' | 'central' | 'south' | 'east' | 'islands';
 
 export interface UniversityItem {
   id: string;
   name: string;
-  region: 'north' | 'central' | 'south' | 'east';
+  region: 'north' | 'central' | 'south' | 'east' | 'islands';
   short: string;
   city: string;
 }
